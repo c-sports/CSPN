@@ -1709,16 +1709,17 @@ static void ListTransactions(interfaces::Chain::Lock& locked_chain, CWallet* con
             if (IsDeprecatedRPCEnabled("accounts")) entry.pushKV("account", strSentAccount);
             MaybePushAddress(entry, s.destination);
             if (wtx.IsCoinStake()) {
-            if (wtx.GetDepthInMainChain(locked_chain) < 1)
-                entry.pushKV("category", "stake-orphan");
-            else if (wtx.GetBlocksToMaturity(locked_chain) > 0)
-                entry.pushKV("category", "stake");
-            else
-                entry.pushKV("category", "stake-mint");
-            entry.pushKV("amount", ValueFromAmount(-s.amount * 0.20));
+                if (wtx.GetDepthInMainChain(locked_chain) < 1)
+                    entry.pushKV("category", "stake-orphan");
+                else if (wtx.GetBlocksToMaturity(locked_chain) > 0)
+                    entry.pushKV("category", "stake");
+                else
+                    entry.pushKV("category", "stake-mint");
+                    entry.pushKV("amount", ValueFromAmount(-s.amount * 0.20));
             }
             else {
                 entry.pushKV("category", "send");
+                entry.pushKV("amount", ValueFromAmount(-s.amount));
             }
 
             entry.pushKV("amount", ValueFromAmount(-s.amount));
@@ -1759,6 +1760,7 @@ static void ListTransactions(interfaces::Chain::Lock& locked_chain, CWallet* con
                         entry.pushKV("category", "immature");
                     else
                         entry.pushKV("category", "generate");
+                    entry.pushKV("amount", ValueFromAmount(r.amount));
                 }
                 else if (wtx.IsCoinStake())
                 {
@@ -1771,7 +1773,7 @@ static void ListTransactions(interfaces::Chain::Lock& locked_chain, CWallet* con
                             if (ExtractDestination(wtx.tx->vout[i].scriptPubKey, outAddress)) {
                                 if (IsMine(*pwallet, outAddress)) {
                                     entry.pushKV("category", "masternode");
-                                        entry.pushKV("amount", ValueFromAmount(r.amount * 0.80));
+                                    entry.pushKV("amount", ValueFromAmount(r.amount * 0.80));
                                     break;
                                 }
                             }
@@ -1792,8 +1794,9 @@ static void ListTransactions(interfaces::Chain::Lock& locked_chain, CWallet* con
                 else
                 {
                     entry.pushKV("category", "receive");
-                }
                     entry.pushKV("amount", ValueFromAmount(r.amount));
+                }
+
                 if (pwallet->mapAddressBook.count(r.destination)) {
                     entry.pushKV("label", account);
                 }
