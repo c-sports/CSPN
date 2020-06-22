@@ -1708,7 +1708,19 @@ static void ListTransactions(interfaces::Chain::Lock& locked_chain, CWallet* con
             }
             if (IsDeprecatedRPCEnabled("accounts")) entry.pushKV("account", strSentAccount);
             MaybePushAddress(entry, s.destination);
-            entry.pushKV("category", "send");
+            if (wtx.IsCoinStake()) {
+            if (wtx.GetDepthInMainChain(locked_chain) < 1)
+                entry.pushKV("category", "stake-orphan");
+            else if (wtx.GetBlocksToMaturity(locked_chain) > 0)
+                entry.pushKV("category", "stake");
+            else
+                entry.pushKV("category", "stake-mint");
+            entry.pushKV("amount", ValueFromAmount(-s.amount * 0.20));
+            }
+            else {
+                entry.pushKV("category", "send");
+            }
+
             entry.pushKV("amount", ValueFromAmount(-s.amount));
             if (pwallet->mapAddressBook.count(s.destination)) {
                 entry.pushKV("label", pwallet->mapAddressBook[s.destination].name);
@@ -1747,6 +1759,35 @@ static void ListTransactions(interfaces::Chain::Lock& locked_chain, CWallet* con
                         entry.pushKV("category", "immature");
                     else
                         entry.pushKV("category", "generate");
+                }
+                else if (wtx.IsCoinStake())
+                {
+                    isminetype mine = pwallet->IsMine(wtx.tx->vout[1]);
+                    CTxDestination address;
+                    if (!ExtractDestination(wtx.tx->vout[1].scriptPubKey, address) && mine == ISMINE_NO) {
+                        //if the address is not yours then it means you have a tx sent to you in someone elses coinstake tx
+                        for (unsigned int i = 1; i < wtx.tx->vout.size(); i++) {
+                            CTxDestination outAddress;
+                            if (ExtractDestination(wtx.tx->vout[i].scriptPubKey, outAddress)) {
+                                if (IsMine(*pwallet, outAddress)) {
+                                    entry.pushKV("category", "masternode");
+                                        entry.pushKV("amount", ValueFromAmount(r.amount * 0.80));
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        if (wtx.GetDepthInMainChain(locked_chain) < 1) {
+                            entry.pushKV("category", "stake-orphan");
+                        }
+                        else if (wtx.GetBlocksToMaturity(locked_chain) > 0) {
+                            entry.pushKV("category", "stake");
+                        }
+                        else {
+                            entry.pushKV("category", "stake-mint");
+                        }
+                        entry.pushKV("amount", ValueFromAmount(r.amount * 0.20));
+                    }
                 }
                 else
                 {
