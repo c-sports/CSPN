@@ -1698,7 +1698,7 @@ static void ListTransactions(interfaces::Chain::Lock& locked_chain, CWallet* con
     bool involvesWatchonly = wtx.IsFromMe(ISMINE_WATCH_ONLY);
 
     // Sent
-    if (!filter_label && (fAllAccounts || strAccount == strSentAccount))
+    if ((!listSent.empty() || nFee != 0) && (fAllAccounts || strAccount == strSentAccount))
     {
         for (const COutputEntry& s : listSent)
         {
